@@ -9,12 +9,16 @@ import { Sector } from '@/types';
 import { sectorsService } from '@/services/sectors';
 import { SectorFormDialog } from '@/components/SectorFormDialog';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { useOffline } from '@/contexts/OfflineContext';
+import { OfflineAlert } from '@/components/OfflineAlert';
+import { mockSectors } from '@/lib/mockData';
 
 const Sectors = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isOffline, setOfflineMode } = useOffline();
   
   // Estados dos modais
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -30,13 +34,11 @@ const Sectors = () => {
       setLoading(true);
       const data = await sectorsService.getAll();
       setSectors(data);
+      setOfflineMode(false);
     } catch (error) {
       console.error('Erro ao carregar setores:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar setores',
-        description: 'Não foi possível carregar a lista de setores.',
-      });
+      setOfflineMode(true);
+      setSectors(mockSectors);
     } finally {
       setLoading(false);
     }
@@ -58,6 +60,15 @@ const Sectors = () => {
   };
 
   const handleSaveSector = async (sectorData: Partial<Sector>) => {
+    if (isOffline) {
+      toast({
+        variant: 'destructive',
+        title: 'Modo Offline',
+        description: 'Não é possível salvar alterações em modo offline',
+      });
+      return;
+    }
+
     if (selectedSector) {
       await sectorsService.update(selectedSector.id, sectorData);
     } else {
@@ -67,21 +78,30 @@ const Sectors = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (selectedSector) {
-      try {
-        await sectorsService.delete(selectedSector.id);
-        toast({
-          title: 'Sucesso',
-          description: 'Setor removido com sucesso',
-        });
-        await loadSectors();
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: 'Não foi possível remover o setor',
-        });
-      }
+    if (!selectedSector) return;
+
+    if (isOffline) {
+      toast({
+        variant: 'destructive',
+        title: 'Modo Offline',
+        description: 'Não é possível excluir setores em modo offline',
+      });
+      return;
+    }
+
+    try {
+      await sectorsService.delete(selectedSector.id);
+      toast({
+        title: 'Sucesso',
+        description: 'Setor removido com sucesso',
+      });
+      await loadSectors();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível remover o setor',
+      });
     }
   };
 
@@ -109,12 +129,14 @@ const Sectors = () => {
             </p>
           </div>
           {user?.role === 'admin' && (
-            <Button onClick={handleNewSector}>
+            <Button onClick={handleNewSector} disabled={isOffline}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Setor
             </Button>
           )}
         </div>
+
+        <OfflineAlert />
 
         <Card>
           <CardHeader>

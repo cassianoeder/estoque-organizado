@@ -11,6 +11,9 @@ import { usersService } from '@/services/users';
 import { sectorsService } from '@/services/sectors';
 import { UserFormDialog } from '@/components/UserFormDialog';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { useOffline } from '@/contexts/OfflineContext';
+import { OfflineAlert } from '@/components/OfflineAlert';
+import { mockUsers, mockSectors } from '@/lib/mockData';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
@@ -18,6 +21,7 @@ const Users = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isOffline, setOfflineMode } = useOffline();
   
   // Estados dos modais
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -37,13 +41,12 @@ const Users = () => {
       ]);
       setUsers(usersData);
       setSectors(sectorsData);
+      setOfflineMode(false);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar dados',
-        description: 'Não foi possível carregar a lista de usuários.',
-      });
+      setOfflineMode(true);
+      setUsers(mockUsers);
+      setSectors(mockSectors);
     } finally {
       setLoading(false);
     }
@@ -76,6 +79,15 @@ const Users = () => {
   };
 
   const handleSaveUser = async (userData: Partial<User>) => {
+    if (isOffline) {
+      toast({
+        variant: 'destructive',
+        title: 'Modo Offline',
+        description: 'Não é possível salvar alterações em modo offline',
+      });
+      return;
+    }
+
     if (selectedUser) {
       await usersService.update(selectedUser.id, userData);
     } else {
@@ -85,21 +97,30 @@ const Users = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (selectedUser) {
-      try {
-        await usersService.delete(selectedUser.id);
-        toast({
-          title: 'Sucesso',
-          description: 'Usuário removido com sucesso',
-        });
-        await loadData();
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: 'Não foi possível remover o usuário',
-        });
-      }
+    if (!selectedUser) return;
+
+    if (isOffline) {
+      toast({
+        variant: 'destructive',
+        title: 'Modo Offline',
+        description: 'Não é possível excluir usuários em modo offline',
+      });
+      return;
+    }
+
+    try {
+      await usersService.delete(selectedUser.id);
+      toast({
+        title: 'Sucesso',
+        description: 'Usuário removido com sucesso',
+      });
+      await loadData();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível remover o usuário',
+      });
     }
   };
 
@@ -127,12 +148,14 @@ const Users = () => {
             </p>
           </div>
           {currentUser?.role === 'admin' && (
-            <Button onClick={handleNewUser}>
+            <Button onClick={handleNewUser} disabled={isOffline}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Usuário
             </Button>
           )}
         </div>
+
+        <OfflineAlert />
 
         <Card>
           <CardHeader>

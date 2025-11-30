@@ -75,12 +75,16 @@ class ApiService {
 
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          throw new ApiError('Requisição expirou. Tente novamente.');
+          throw new ApiError('Requisição expirou. Tente novamente.', 0);
         }
-        throw new ApiError(error.message);
+        // Erro de conexão - indica modo offline
+        if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+          throw new ApiError('Falha na conexão com o servidor', 0);
+        }
+        throw new ApiError(error.message, 0);
       }
 
-      throw new ApiError('Erro desconhecido ao processar requisição');
+      throw new ApiError('Erro desconhecido ao processar requisição', 0);
     }
   }
 
