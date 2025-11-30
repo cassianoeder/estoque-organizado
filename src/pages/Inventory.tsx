@@ -27,11 +27,16 @@ import {
   Eye,
   Edit,
   History,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
-import { Item } from '@/types';
+import { Item, Sector } from '@/types';
 import { itemsService } from '@/services/items';
 import { sectorsService } from '@/services/sectors';
+import { ItemFormDialog } from '@/components/ItemFormDialog';
+import { ItemDetailsDialog } from '@/components/ItemDetailsDialog';
+import { ItemHistoryDialog } from '@/components/ItemHistoryDialog';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -39,11 +44,18 @@ const Inventory = () => {
   const { user, hasPermission } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
-  const [sectors, setSectors] = useState<{ id: string; name: string }[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
+
+  // Estados dos modais
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
   useEffect(() => {
     loadData();
@@ -75,21 +87,15 @@ const Inventory = () => {
   // Filtrar itens baseado em permissões e filtros
   const filteredItems = useMemo(() => {
     return items.filter(item => {
-      // Filtro de busca
       if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
       }
-
-      // Filtro de status
       if (statusFilter !== 'all' && item.status !== statusFilter) {
         return false;
       }
-
-      // Filtro de setor
       if (sectorFilter !== 'all' && item.sector !== sectorFilter) {
         return false;
       }
-
       return true;
     });
   }, [items, searchTerm, statusFilter, sectorFilter]);
@@ -120,8 +126,60 @@ const Inventory = () => {
     return types[type] || type;
   };
 
+  const handleNewItem = () => {
+    setSelectedItem(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEditItem = (item: Item) => {
+    setSelectedItem(item);
+    setFormDialogOpen(true);
+  };
+
+  const handleViewItem = (item: Item) => {
+    setSelectedItem(item);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleHistoryItem = (item: Item) => {
+    setSelectedItem(item);
+    setHistoryDialogOpen(true);
+  };
+
+  const handleDeleteItem = (item: Item) => {
+    setSelectedItem(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSaveItem = async (itemData: Partial<Item>) => {
+    if (selectedItem) {
+      await itemsService.update(selectedItem.id, itemData);
+    } else {
+      await itemsService.create(itemData);
+    }
+    await loadData();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedItem) {
+      try {
+        await itemsService.delete(selectedItem.id);
+        toast({
+          title: 'Sucesso',
+          description: 'Item removido com sucesso',
+        });
+        await loadData();
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: 'Não foi possível remover o item',
+        });
+      }
+    }
+  };
+
   const handleExport = () => {
-    // TODO: Implementar exportação real via API
     toast({
       title: 'Exportação',
       description: 'Funcionalidade de exportação será implementada em breve.',
@@ -158,7 +216,7 @@ const Inventory = () => {
               Exportar
             </Button>
             {user?.role === 'admin' && (
-              <Button>
+              <Button onClick={handleNewItem}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Item
               </Button>
@@ -250,17 +308,42 @@ const Inventory = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="Visualizar">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Visualizar"
+                          onClick={() => handleViewItem(item)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         {(user?.role === 'admin' || user?.sector === item.sector) && (
-                          <Button variant="ghost" size="icon" title="Editar">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Editar"
+                            onClick={() => handleEditItem(item)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" title="Histórico">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Histórico"
+                          onClick={() => handleHistoryItem(item)}
+                        >
                           <History className="h-4 w-4" />
                         </Button>
+                        {user?.role === 'admin' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Excluir"
+                            onClick={() => handleDeleteItem(item)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -270,6 +353,36 @@ const Inventory = () => {
           </Table>
         </div>
       </div>
+
+      {/* Modals */}
+      <ItemFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        item={selectedItem || undefined}
+        sectors={sectors}
+        onSave={handleSaveItem}
+      />
+
+      <ItemDetailsDialog
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        item={selectedItem}
+      />
+
+      <ItemHistoryDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        itemId={selectedItem?.id || null}
+        itemName={selectedItem?.name || ''}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir item"
+        description={`Tem certeza que deseja excluir "${selectedItem?.name}"? Esta ação não pode ser desfeita.`}
+        onConfirm={handleConfirmDelete}
+      />
     </Layout>
   );
 };
