@@ -4,6 +4,7 @@ import Layout from '@/components/Layout';
 import StatsCard from '@/components/StatsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Package, 
   CheckCircle, 
@@ -12,20 +13,37 @@ import {
   Building2,
   Clock
 } from 'lucide-react';
-import { DashboardStats, Item } from '@/types';
-import { getMockDashboardStats } from '@/lib/mockData';
+import { DashboardStats } from '@/types';
+import { dashboardService } from '@/services/dashboard';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Substituir por chamada à API real
-    const data = getMockDashboardStats();
-    setStats(data);
+    loadStats();
   }, []);
+
+  const loadStats = async () => {
+    try {
+      setLoading(true);
+      const data = await dashboardService.getStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao carregar dados',
+        description: 'Não foi possível carregar as estatísticas do dashboard.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
@@ -38,7 +56,7 @@ const Dashboard = () => {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  if (!stats) {
+  if (loading || !stats) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-96">

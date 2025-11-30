@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Table,
   TableBody,
@@ -28,25 +29,52 @@ import {
   History,
   Plus
 } from 'lucide-react';
-import { mockItems, mockSectors } from '@/lib/mockData';
 import { Item } from '@/types';
+import { itemsService } from '@/services/items';
+import { sectorsService } from '@/services/sectors';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
 
 const Inventory = () => {
   const { user, hasPermission } = useAuth();
-  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [items, setItems] = useState<Item[]>([]);
+  const [sectors, setSectors] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [itemsData, sectorsData] = await Promise.all([
+        itemsService.getAll(),
+        sectorsService.getAll()
+      ]);
+      
+      const visibleItems = itemsData.filter(item => hasPermission(item));
+      setItems(visibleItems);
+      setSectors(sectorsData);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao carregar dados',
+        description: 'Não foi possível carregar os dados do estoque.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filtrar itens baseado em permissões e filtros
   const filteredItems = useMemo(() => {
-    return mockItems.filter(item => {
-      // Verificar permissão
-      if (!hasPermission(item)) return false;
-
+    return items.filter(item => {
       // Filtro de busca
       if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
@@ -64,7 +92,7 @@ const Inventory = () => {
 
       return true;
     });
-  }, [searchTerm, statusFilter, sectorFilter, hasPermission]);
+  }, [items, searchTerm, statusFilter, sectorFilter]);
 
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { variant: "default" | "secondary" | "destructive"; label: string; className?: string }> = {
@@ -93,9 +121,25 @@ const Inventory = () => {
   };
 
   const handleExport = () => {
-    // TODO: Implementar exportação real
-    alert('Função de exportação será implementada com integração do backend');
+    // TODO: Implementar exportação real via API
+    toast({
+      title: 'Exportação',
+      description: 'Funcionalidade de exportação será implementada em breve.',
+    });
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Carregando...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -113,10 +157,12 @@ const Inventory = () => {
               <Download className="h-4 w-4 mr-2" />
               Exportar
             </Button>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Item
-            </Button>
+            {user?.role === 'admin' && (
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Item
+              </Button>
+            )}
           </div>
         </div>
 
@@ -151,7 +197,7 @@ const Inventory = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os setores</SelectItem>
-              {mockSectors.map(sector => (
+              {sectors.map(sector => (
                 <SelectItem key={sector.id} value={sector.name}>
                   {sector.name}
                 </SelectItem>
@@ -162,7 +208,7 @@ const Inventory = () => {
 
         {/* Results Count */}
         <div className="text-sm text-muted-foreground">
-          Mostrando <strong>{filteredItems.length}</strong> de <strong>{mockItems.length}</strong> itens
+          Mostrando <strong>{filteredItems.length}</strong> de <strong>{items.length}</strong> itens
         </div>
 
         {/* Table */}
@@ -207,9 +253,11 @@ const Inventory = () => {
                         <Button variant="ghost" size="icon" title="Visualizar">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" title="Editar">
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        {(user?.role === 'admin' || user?.sector === item.sector) && (
+                          <Button variant="ghost" size="icon" title="Editar">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" title="Histórico">
                           <History className="h-4 w-4" />
                         </Button>
