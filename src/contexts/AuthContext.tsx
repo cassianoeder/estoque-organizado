@@ -1,62 +1,46 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Item, AuthContextType } from '@/types';
+import { authService } from '@/services/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock de usuários para desenvolvimento
-const mockUsers: User[] = [
-  {
-    id: '1',
-    username: 'admin',
-    name: 'Administrador',
-    role: 'admin',
-    email: 'admin@colegio.com'
-  },
-  {
-    id: '2',
-    username: 'secretaria',
-    name: 'João Silva',
-    role: 'sector',
-    sector: 'Secretaria',
-    email: 'secretaria@colegio.com'
-  },
-  {
-    id: '3',
-    username: 'usuario',
-    name: 'Maria Santos',
-    role: 'user',
-    email: 'usuario@colegio.com'
-  }
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Verificar se há usuário salvo no localStorage
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Erro ao carregar usuário salvo:', error);
+        localStorage.removeItem('user');
+      }
     }
+    setLoading(false);
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // TODO: Integrar com API real
-    // Mock de autenticação
-    const foundUser = mockUsers.find(u => u.username === username);
-    
-    if (foundUser && password === 'senha123') {
-      setUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
+    try {
+      const response = await authService.login(username, password);
+      setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(response.user));
       return true;
+    } catch (error) {
+      console.error('Erro ao fazer login:', error);
+      return false;
     }
-    
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+    }
   };
 
   const hasPermission = (item: Item): boolean => {
@@ -76,6 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Usuário comum só vê públicos
     return false;
   };
+
+  if (loading) {
+    return null; // Ou um componente de loading
+  }
 
   return (
     <AuthContext.Provider
