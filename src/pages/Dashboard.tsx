@@ -17,12 +17,16 @@ import { DashboardStats } from '@/types';
 import { dashboardService } from '@/services/dashboard';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useOffline } from '@/contexts/OfflineContext';
+import { OfflineAlert } from '@/components/OfflineAlert';
+import { getMockDashboardStats } from '@/lib/mockData';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isOffline, setOfflineMode } = useOffline();
 
   useEffect(() => {
     loadStats();
@@ -33,13 +37,11 @@ const Dashboard = () => {
       setLoading(true);
       const data = await dashboardService.getStats();
       setStats(data);
+      setOfflineMode(false);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar dados',
-        description: 'Não foi possível carregar as estatísticas do dashboard.',
-      });
+      setOfflineMode(true);
+      setStats(getMockDashboardStats());
     } finally {
       setLoading(false);
     }
@@ -79,6 +81,8 @@ const Dashboard = () => {
             Bem-vindo, {user?.name}
           </p>
         </div>
+
+        <OfflineAlert />
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

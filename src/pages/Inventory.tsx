@@ -39,6 +39,9 @@ import { ItemHistoryDialog } from '@/components/ItemHistoryDialog';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useOffline } from '@/contexts/OfflineContext';
+import { OfflineAlert } from '@/components/OfflineAlert';
+import { mockItems, mockSectors } from '@/lib/mockData';
 
 const Inventory = () => {
   const { user, hasPermission } = useAuth();
@@ -49,6 +52,7 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
+  const { isOffline, setOfflineMode } = useOffline();
 
   // Estados dos modais
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -72,13 +76,12 @@ const Inventory = () => {
       const visibleItems = itemsData.filter(item => hasPermission(item));
       setItems(visibleItems);
       setSectors(sectorsData);
+      setOfflineMode(false);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar dados',
-        description: 'Não foi possível carregar os dados do estoque.',
-      });
+      setOfflineMode(true);
+      setItems(mockItems.filter(item => hasPermission(item)));
+      setSectors(mockSectors);
     } finally {
       setLoading(false);
     }
@@ -152,6 +155,15 @@ const Inventory = () => {
   };
 
   const handleSaveItem = async (itemData: Partial<Item>) => {
+    if (isOffline) {
+      toast({
+        variant: 'destructive',
+        title: 'Modo Offline',
+        description: 'Não é possível salvar alterações em modo offline',
+      });
+      return;
+    }
+
     if (selectedItem) {
       await itemsService.update(selectedItem.id, itemData);
     } else {
@@ -161,21 +173,30 @@ const Inventory = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (selectedItem) {
-      try {
-        await itemsService.delete(selectedItem.id);
-        toast({
-          title: 'Sucesso',
-          description: 'Item removido com sucesso',
-        });
-        await loadData();
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: 'Não foi possível remover o item',
-        });
-      }
+    if (!selectedItem) return;
+
+    if (isOffline) {
+      toast({
+        variant: 'destructive',
+        title: 'Modo Offline',
+        description: 'Não é possível excluir itens em modo offline',
+      });
+      return;
+    }
+
+    try {
+      await itemsService.delete(selectedItem.id);
+      toast({
+        title: 'Sucesso',
+        description: 'Item removido com sucesso',
+      });
+      await loadData();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível remover o item',
+      });
     }
   };
 
@@ -216,13 +237,15 @@ const Inventory = () => {
               Exportar
             </Button>
             {user?.role === 'admin' && (
-              <Button onClick={handleNewItem}>
+              <Button onClick={handleNewItem} disabled={isOffline}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Item
               </Button>
             )}
           </div>
         </div>
+
+        <OfflineAlert />
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">

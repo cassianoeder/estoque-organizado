@@ -1,4 +1,4 @@
-import { Item, ItemHistory, Sector, DashboardStats } from '@/types';
+import { Item, ItemHistory, Sector, DashboardStats, User } from '@/types';
 
 // Mock de setores
 export const mockSectors: Sector[] = [
@@ -7,6 +7,40 @@ export const mockSectors: Sector[] = [
   { id: '3', name: 'Laboratório', description: 'Equipamentos científicos' },
   { id: '4', name: 'TI', description: 'Tecnologia da Informação' },
   { id: '5', name: 'Almoxarifado', description: 'Materiais gerais' },
+];
+
+// Mock de usuários
+export const mockUsers: User[] = [
+  {
+    id: '1',
+    name: 'Admin',
+    email: 'admin@colegio.com',
+    username: 'admin',
+    role: 'admin'
+  },
+  {
+    id: '2',
+    name: 'João Silva',
+    email: 'joao@colegio.com',
+    username: 'joao',
+    role: 'sector',
+    sector: 'TI'
+  },
+  {
+    id: '3',
+    name: 'Maria Santos',
+    email: 'maria@colegio.com',
+    username: 'maria',
+    role: 'sector',
+    sector: 'Secretaria'
+  },
+  {
+    id: '4',
+    name: 'Carlos Mendes',
+    email: 'carlos@colegio.com',
+    username: 'carlos',
+    role: 'user'
+  }
 ];
 
 // Mock de itens do estoque
