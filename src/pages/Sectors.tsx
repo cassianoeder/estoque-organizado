@@ -7,12 +7,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Building2, Plus, Edit, Trash2 } from 'lucide-react';
 import { Sector } from '@/types';
 import { sectorsService } from '@/services/sectors';
+import { SectorFormDialog } from '@/components/SectorFormDialog';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 
 const Sectors = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados dos modais
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
 
   useEffect(() => {
     loadSectors();
@@ -32,6 +39,49 @@ const Sectors = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNewSector = () => {
+    setSelectedSector(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEditSector = (sector: Sector) => {
+    setSelectedSector(sector);
+    setFormDialogOpen(true);
+  };
+
+  const handleDeleteSector = (sector: Sector) => {
+    setSelectedSector(sector);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSaveSector = async (sectorData: Partial<Sector>) => {
+    if (selectedSector) {
+      await sectorsService.update(selectedSector.id, sectorData);
+    } else {
+      await sectorsService.create(sectorData);
+    }
+    await loadSectors();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedSector) {
+      try {
+        await sectorsService.delete(selectedSector.id);
+        toast({
+          title: 'Sucesso',
+          description: 'Setor removido com sucesso',
+        });
+        await loadSectors();
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: 'Não foi possível remover o setor',
+        });
+      }
     }
   };
 
@@ -59,7 +109,7 @@ const Sectors = () => {
             </p>
           </div>
           {user?.role === 'admin' && (
-            <Button>
+            <Button onClick={handleNewSector}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Setor
             </Button>
@@ -93,10 +143,18 @@ const Sectors = () => {
                   </div>
                   {user?.role === 'admin' && (
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleEditSector(sector)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDeleteSector(sector)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -107,6 +165,22 @@ const Sectors = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      <SectorFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        sector={selectedSector || undefined}
+        onSave={handleSaveSector}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir setor"
+        description={`Tem certeza que deseja excluir "${selectedSector?.name}"? Esta ação não pode ser desfeita.`}
+        onConfirm={handleConfirmDelete}
+      />
     </Layout>
   );
 };

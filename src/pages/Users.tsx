@@ -6,29 +6,42 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Users as UsersIcon, Plus, Edit, Trash2 } from 'lucide-react';
-import { User } from '@/types';
+import { User, Sector } from '@/types';
 import { usersService } from '@/services/users';
+import { sectorsService } from '@/services/sectors';
+import { UserFormDialog } from '@/components/UserFormDialog';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados dos modais
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    loadUsers();
+    loadData();
   }, []);
 
-  const loadUsers = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await usersService.getAll();
-      setUsers(data);
+      const [usersData, sectorsData] = await Promise.all([
+        usersService.getAll(),
+        sectorsService.getAll()
+      ]);
+      setUsers(usersData);
+      setSectors(sectorsData);
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+      console.error('Erro ao carregar dados:', error);
       toast({
         variant: 'destructive',
-        title: 'Erro ao carregar usuários',
+        title: 'Erro ao carregar dados',
         description: 'Não foi possível carregar a lista de usuários.',
       });
     } finally {
@@ -45,6 +58,49 @@ const Users = () => {
     
     const config = variants[role] || variants.user;
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const handleNewUser = () => {
+    setSelectedUser(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setFormDialogOpen(true);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSaveUser = async (userData: Partial<User>) => {
+    if (selectedUser) {
+      await usersService.update(selectedUser.id, userData);
+    } else {
+      await usersService.create(userData);
+    }
+    await loadData();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedUser) {
+      try {
+        await usersService.delete(selectedUser.id);
+        toast({
+          title: 'Sucesso',
+          description: 'Usuário removido com sucesso',
+        });
+        await loadData();
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: 'Não foi possível remover o usuário',
+        });
+      }
+    }
   };
 
   if (loading) {
@@ -71,7 +127,7 @@ const Users = () => {
             </p>
           </div>
           {currentUser?.role === 'admin' && (
-            <Button>
+            <Button onClick={handleNewUser}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Usuário
             </Button>
@@ -112,10 +168,18 @@ const Users = () => {
                     {getRoleBadge(user.role)}
                     {currentUser?.role === 'admin' && (
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleEditUser(user)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDeleteUser(user)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -127,6 +191,23 @@ const Users = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      <UserFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        user={selectedUser || undefined}
+        sectors={sectors}
+        onSave={handleSaveUser}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir usuário"
+        description={`Tem certeza que deseja excluir "${selectedUser?.name}"? Esta ação não pode ser desfeita.`}
+        onConfirm={handleConfirmDelete}
+      />
     </Layout>
   );
 };

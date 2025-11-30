@@ -48,10 +48,10 @@ export interface Item {
 export interface ItemHistory {
   id: string;
   itemId: string;
-  action: 'created' | 'borrowed' | 'returned' | 'status_changed' | 'updated';
+  action: 'created' | 'borrowed' | 'returned' | 'status_changed' | 'updated' | 'lost' | 'found';
   user: string;
-  date: string;
-  details?: string;
+  timestamp: string;
+  observations?: string;
   previousStatus?: ItemStatus;
   newStatus?: ItemStatus;
 }

@@ -111,8 +111,8 @@ export const mockHistory: ItemHistory[] = [
     itemId: '3',
     action: 'borrowed',
     user: 'Prof. Carlos Mendes',
-    date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    details: 'Empréstimo para aula prática',
+    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    observations: 'Empréstimo para aula prática',
     previousStatus: 'available',
     newStatus: 'borrowed'
   },
@@ -121,8 +121,8 @@ export const mockHistory: ItemHistory[] = [
     itemId: '1',
     action: 'returned',
     user: 'João Silva',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    details: 'Devolvido após uso em apresentação',
+    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    observations: 'Devolvido após uso em apresentação',
     previousStatus: 'borrowed',
     newStatus: 'available'
   }
