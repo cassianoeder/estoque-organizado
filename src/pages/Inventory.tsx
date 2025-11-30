@@ -80,8 +80,8 @@ const Inventory = () => {
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       setOfflineMode(true);
-      setItems(mockItems.filter(item => hasPermission(item)));
-      setSectors(mockSectors);
+      setItems([]);
+      setSectors([]);
     } finally {
       setLoading(false);
     }
