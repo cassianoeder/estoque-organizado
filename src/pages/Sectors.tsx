@@ -38,7 +38,7 @@ const Sectors = () => {
     } catch (error) {
       console.error('Erro ao carregar setores:', error);
       setOfflineMode(true);
-      setSectors(mockSectors);
+      setSectors([]);
     } finally {
       setLoading(false);
     }

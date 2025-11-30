@@ -45,8 +45,8 @@ const Users = () => {
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       setOfflineMode(true);
-      setUsers(mockUsers);
-      setSectors(mockSectors);
+      setUsers([]);
+      setSectors([]);
     } finally {
       setLoading(false);
     }

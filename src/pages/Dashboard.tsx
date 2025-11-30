@@ -41,7 +41,14 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
       setOfflineMode(true);
-      setStats(getMockDashboardStats());
+      setStats({
+        totalItems: 0,
+        availableItems: 0,
+        borrowedItems: 0,
+        lostItems: 0,
+        itemsBySector: [],
+        recentItems: []
+      });
     } finally {
       setLoading(false);
     }
