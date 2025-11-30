@@ -2,17 +2,64 @@
 
 ## Configuração Inicial
 
-1. Abra o arquivo `src/config/api.ts`
-2. Altere a constante `API_BASE_URL` para o endereço do seu n8n:
+### 1. Configure a URL do Backend
+
+Abra o arquivo `src/config/api.ts` e configure a constante `API_BASE_URL` com o endereço completo do seu backend n8n.
+
+**O sistema é totalmente flexível e aceita qualquer formato válido de URL:**
 
 ```typescript
 export const API_BASE_URL = 'https://seu-dominio.com/webhook';
 ```
 
-Exemplos:
-- Desenvolvimento local: `'http://localhost:5678/webhook'`
-- n8n Cloud: `'https://sua-instancia.app.n8n.cloud/webhook'`
-- Servidor próprio: `'https://n8n.seudominio.com/webhook'`
+### Exemplos de URLs Válidas:
+
+#### HTTP/HTTPS - Ambos funcionam
+```typescript
+// HTTP
+export const API_BASE_URL = 'http://localhost:5678/webhook';
+export const API_BASE_URL = 'http://seu-dominio.com/webhook';
+
+// HTTPS
+export const API_BASE_URL = 'https://localhost:5678/webhook';
+export const API_BASE_URL = 'https://seu-dominio.com/webhook';
+```
+
+#### IP ou Domínio - Ambos funcionam
+```typescript
+// Endereço IP com porta
+export const API_BASE_URL = 'http://192.168.1.100:5678/webhook';
+export const API_BASE_URL = 'https://192.168.1.100:5678/webhook';
+
+// Domínio
+export const API_BASE_URL = 'https://n8n.seudominio.com/webhook';
+
+// n8n Cloud
+export const API_BASE_URL = 'https://sua-instancia.app.n8n.cloud/webhook';
+
+// Porta customizada
+export const API_BASE_URL = 'http://10.0.0.50:8080/api';
+```
+
+### Observações Importantes:
+- ✅ Pode usar **HTTP** ou **HTTPS**
+- ✅ Pode usar **endereço IP** ou **nome de domínio**
+- ✅ Pode incluir **porta customizada**
+- ✅ **Não adicione** barra (/) no final da URL
+- ✅ O sistema automaticamente normaliza a URL removendo barras extras
+- ✅ URLs são validadas antes de fazer requisições
+
+### 2. Como funciona internamente:
+
+O sistema irá:
+1. Validar se a URL está no formato correto
+2. Normalizar a URL removendo barras extras
+3. Combinar a URL base com os endpoints automaticamente
+
+**Exemplo:**
+- URL configurada: `http://192.168.1.100:5678/webhook/`
+- Sistema normaliza para: `http://192.168.1.100:5678/webhook`
+- Requisição final: `http://192.168.1.100:5678/webhook/items`
 
 ---
 
