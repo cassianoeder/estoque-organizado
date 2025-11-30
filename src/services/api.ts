@@ -1,4 +1,4 @@
-import { API_BASE_URL, API_TIMEOUT } from '@/config/api';
+import { NORMALIZED_API_BASE_URL, API_TIMEOUT, validateApiUrl } from '@/config/api';
 
 export class ApiError extends Error {
   constructor(
@@ -34,6 +34,12 @@ class ApiService {
   ): Promise<T> {
     const { timeout = API_TIMEOUT, ...fetchOptions } = options;
 
+    // Valida a URL configurada
+    const validation = validateApiUrl();
+    if (!validation.valid) {
+      throw new ApiError(validation.error || 'URL da API inválida', 0);
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -48,7 +54,11 @@ class ApiService {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      // Normaliza o endpoint removendo barra inicial duplicada
+      const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      const fullUrl = `${NORMALIZED_API_BASE_URL}${normalizedEndpoint}`;
+
+      const response = await fetch(fullUrl, {
         ...fetchOptions,
         headers,
         signal: controller.signal,
